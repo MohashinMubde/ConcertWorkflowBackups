@@ -1,0 +1,108 @@
+name: Lab 2
+platform: node
+blocks:
+  - action: try
+    name: try_end
+    try:
+      - action: system/Common/SSH/SSH
+        name: SSH_to_SevOne
+        inputs:
+          - name: authKey
+            value: '"admin/SSH"'
+          - name: command
+            value: '`speedtest --format=json`'
+    catch:
+      - action: throw
+        error: "\"SSH to SevOne Failed: \" + $try_end.message"
+  - action: system/Common/DateTime/Timestamp Now
+    name: TimestampNow_1
+  - action: system/Common/JSON/jq
+    name: jq_1
+    inputs:
+      - name: Filter
+        value: $SSH_to_SevOne.result
+  - action: assign
+    name: Assign_1
+    variable: $device
+    value: '"SFO-EDGE01"'
+  - action: assign
+    name: Assign_2
+    variable: $time
+    value: $TimestampNow_1.result
+  - action: assign
+    name: Assign_3
+    variable: $download
+    value: ($jq_1.result.download.bandwidth * 8) / 1000000
+  - action: assign
+    name: Assign_4
+    variable: $upload
+    value: ($jq_1.result.upload.bandwidth * 8) / 1000000
+  - action: assign
+    name: Assign_5
+    variable: $url
+    value: $jq_1.result.result.url
+  - action: assign
+    name: Assign_6
+variables:
+  - name: result
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+  - name: time
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: number
+    value: "0"
+  - name: download
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: number
+    value: "0"
+  - name: upload
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: number
+    value: "0"
+  - name: device
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: string
+    value: '""'
+  - name: url
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: string
+    value: '""'
+  - name: Body
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+meta:
+  version: 5
+  layout: flow
+  workerGroup: default
+  description: Incomplete
+finally: null

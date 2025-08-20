@@ -1,0 +1,75 @@
+name: Lab 5
+platform: node
+blocks:
+  - action: system/Napalm/get_facts
+    name: Napalm_getFacts
+    inputs:
+      - name: authKey
+        value: '"admin/Sac-WAN"'
+  - action: assign
+    name: Assign_Name
+    variable: $deviceName
+    value: $Napalm_getFacts.result.hostname
+  - action: system/Napalm/get_config
+    name: Napalm_getConfig
+    inputs:
+      - name: authKey
+        value: '"admin/Sac-WAN"'
+  - action: system/Common/String/Base64 Encode
+    name: 64encode_runningConfig
+    inputs:
+      - name: str
+        value: $Napalm_getConfig.result.running
+  - action: system/Common/DateTime/Timestamp Now
+    name: TimestampNow_1
+  - action: system/Common/DateTime/Date Format ISO 8601
+    name: DateFormatISO8601_1
+    inputs:
+      - name: timestamp
+        value: $TimestampNow_1.result
+      - name: unit
+        value: '"seconds"'
+  - action: system/Github/Repos/Create Or Update File Contents
+    name: Github_1
+    inputs:
+      - name: authKey
+        value: '"admin/GitHub"'
+      - name: owner
+        value: '"MohashinMubde"'
+      - name: repo
+        value: '"Networkbackups"'
+      - name: path
+        value: $deviceName
+      - name: Body
+        value: |-
+          {
+              "message": $DateFormatISO8601_1.result,
+              "content": $64encode_runningConfig.result
+          }
+  - action: assign
+    name: Assign_1
+    variable: $result
+    value: "\"Git push was successful: \" + $Github_1.result.commit.sha"
+variables:
+  - name: result
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+  - name: deviceName
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: string
+    value: '""'
+meta:
+  version: 5
+  layout: flow
+  workerGroup: default
+  description: Complete
+finally: null
