@@ -1,0 +1,97 @@
+name: Lab 4
+platform: node
+blocks:
+  - action: system/Napalm/get_facts
+    name: Napalm_1
+    inputs:
+      - name: authKey
+        value: '"admin/Sac-WAN"'
+  - action: assign
+    name: Assign_hostname
+    variable: $result
+    value: $Napalm_1.result.hostname
+  - action: system/Napalm/get_config
+    name: Napalm_2
+    inputs:
+      - name: authKey
+        value: '"admin/Sac-WAN"'
+  - action: assign
+    name: Assign_running
+    variable: $config_running
+    value: '"\n" + $Napalm_2.result.running'
+  - action: assign
+    name: Assign_startup
+    variable: $config_start
+    value: "\"\\n\" + $Napalm_2.result.startup.replace(/.*/, \"\").substr(2)"
+  - action: foreach
+    name: ForEach_1
+    list: $config_running
+    blocks:
+      - name: Function_1
+        function: $count_lines_running++
+  - action: foreach
+    name: ForEach_2
+    list: $config_start
+    blocks:
+      - name: Function_2
+        function: $count_lines_startup++
+  - action: assign
+    name: Assign_result2
+    variable: $result2
+    value: "\"\\n Counter Running: \" + $count_lines_running + \"\\n Counter Startup:\
+      \ \" + $count_lines_startup"
+variables:
+  - name: result
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+  - name: config_running
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+  - name: config_start
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+  - name: result2
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: any
+    value: '""'
+  - name: count_lines_running
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: number
+    value: "0"
+  - name: count_lines_startup
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: number
+    value: "0"
+meta:
+  version: 5
+  layout: flow
+  workerGroup: default
+  description: Complete
+finally: null
