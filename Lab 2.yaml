@@ -22,27 +22,52 @@ blocks:
       - name: Filter
         value: $SSH_to_SevOne.result
   - action: assign
-    name: Assign_1
+    name: Assign_Device
     variable: $device
     value: '"SFO-EDGE01"'
   - action: assign
-    name: Assign_2
+    name: Assign_Time
     variable: $time
     value: $TimestampNow_1.result
   - action: assign
-    name: Assign_3
+    name: Assign_Download
     variable: $download
     value: ($jq_1.result.download.bandwidth * 8) / 1000000
   - action: assign
-    name: Assign_4
+    name: Assign_Upload
     variable: $upload
     value: ($jq_1.result.upload.bandwidth * 8) / 1000000
   - action: assign
-    name: Assign_5
+    name: Assign_Result
     variable: $url
     value: $jq_1.result.result.url
   - action: assign
-    name: Assign_6
+    name: Assign_BodyObj
+    variable: $Body
+    value: |-
+      {
+          [$device]: {
+              "Speedtest": ["Values", {
+                  "timestamp1": {
+                      "timestamp": $time,
+                      "Download": [$download, "Megabits", "GAUGE"],
+                      "Upload": [$upload, "Megabits", "GAUGE"]
+                  }
+              }]
+          }
+      }
+    breakpoint: enabled
+  - action: ./SevOne Ingest Data - APIv3 (new v3 version)
+    name: toSevOne
+    inputs:
+      - name: content
+        value: $Body
+      - name: NMSCredentials
+        value: '"admin/NMS-SevOne"'
+  - action: assign
+    name: Assign_1
+    variable: $result
+    value: '"End of workflow"'
 variables:
   - name: result
     required: false
@@ -55,7 +80,7 @@ variables:
   - name: time
     required: false
     isInput: false
-    isOutput: false
+    isOutput: true
     level: INTERMEDIATE
     type:
       type: number
@@ -63,7 +88,7 @@ variables:
   - name: download
     required: false
     isInput: false
-    isOutput: false
+    isOutput: true
     level: INTERMEDIATE
     type:
       type: number
@@ -71,7 +96,7 @@ variables:
   - name: upload
     required: false
     isInput: false
-    isOutput: false
+    isOutput: true
     level: INTERMEDIATE
     type:
       type: number
@@ -79,7 +104,7 @@ variables:
   - name: device
     required: false
     isInput: false
-    isOutput: false
+    isOutput: true
     level: INTERMEDIATE
     type:
       type: string
@@ -95,7 +120,7 @@ variables:
   - name: Body
     required: false
     isInput: false
-    isOutput: false
+    isOutput: true
     level: INTERMEDIATE
     type:
       type: object

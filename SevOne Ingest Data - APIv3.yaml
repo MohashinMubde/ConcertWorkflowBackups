@@ -1,0 +1,521 @@
+name: SevOne Ingest Data - APIv3
+platform: node
+blocks:
+  - action: assign
+    name: Assign_11
+    variable: $NMSCredentials
+    value: '"admin/Test_SevOne_HCM_Raul"'
+    skipped: true
+  - action: assign
+    name: Declare_Content
+    variable: $content
+    value: |-
+      {
+          "devicename": {
+              "objectaname": ["objecttype1", {
+                  "timestamp1": {
+                      "timestamp": 1685478963,
+                      "indicatorname": [5, "Bytes", "GAUGE"],
+                      "indicatorname2": 22
+                  }
+              }],
+              "objectname2": ["objecttype2", {
+                  "timestamp1": {
+                      "timestamp": 1685478963,
+                      "indicatorname3": 7
+                  }
+              }]
+          },
+          "devicename2": {
+              "objectname3": ["objecttype3", {
+                  "timestamp1": {
+                      "timestamp": 1685478963,
+                      "indicatorname4": 5,
+                      "indicatorname5": 30
+                  }
+              }]
+          }
+      }
+    skipped: true
+  - name: Function_1
+    function: |-
+      let array = [];
+      Object.keys($content).forEach(key => {
+          array.push(key);
+          $devicenames = array;
+      })
+  - action: foreach
+    name: Foreach_device
+    blocks:
+      - action: system/SevOne/REST v2/Devices/Filter Device
+        name: Search_Device
+        inputs:
+          - name: authKey
+            value: $NMSCredentials
+          - name: filter
+            value: |-
+              {
+                  "name": $Foreach_device.item
+              }
+          - name: size
+            value: "10000"
+      - action: assign
+        name: Devicefound
+        variable: $devicefound
+        value: "-1"
+      - action: foreach
+        name: ForEach_1
+        blocks:
+          - action: assign
+            name: This_device_name
+            variable: $devicenamecheck
+            value: $ForEach_1.item.name
+          - action: if
+            name: If_3
+            then:
+              - action: assign
+                name: Assign_13
+                variable: $devicefound
+                value: $ForEach_1.item.id
+              - action: assign
+                name: Assign_14
+                variable: $devicefoundip
+                value: $ForEach_1.item.ipAddress
+            else: []
+            condition: $devicenamecheck == $Foreach_device.item
+        list: $Search_Device.result.content
+      - action: if
+        name: Found_Device
+        then:
+          - action: assign
+            name: Define_DeviceID
+            variable: $deviceid
+            value: $devicefound
+          - action: assign
+            name: Bodyname
+            variable: "$body['name']"
+            value: $Foreach_device.item
+          - action: assign
+            name: BodyIP
+            variable: "$body['ip']"
+            value: $devicefoundip
+          - action: assign
+            name: Body_type
+            variable: "$body['type']"
+            value: "$Search_Device.result.content[0].name"
+          - action: assign
+            name: Body_automatic
+            variable: "$body['automaticCreation']"
+            value: "true"
+        else:
+          - action: system/SevOne/REST v2/Devices/Create Device
+            name: Create_Device
+            inputs:
+              - name: authKey
+                value: $NMSCredentials
+              - name: device
+                value: |-
+                  {
+                      "pollFrequency": 300,
+                      "description": "Created by Pliant API",
+                      "ipAddress": "0.0.0.0",
+                      "name": $Foreach_device.item
+                  }
+          - action: assign
+            name: Define_DeviceID2
+            variable: $deviceid
+            value: $Create_Device.result.id
+          - action: assign
+            name: body_name2
+            variable: "$body['name']"
+            value: $Create_Device.result.name
+          - action: assign
+            name: Body_ip2
+            variable: "$body['ip]']"
+            value: $Create_Device.result.ipAddress
+          - action: assign
+            name: body_type2
+            variable: "$body['type']"
+            value: $Create_Device.result.name
+          - action: assign
+            name: body_automatic2
+            variable: "$body['automaticCreation']"
+            value: "true"
+        condition: $devicefound > -1
+      - name: Function_2
+        function: |-
+          let array = [];
+          let currentobject = $content[$Foreach_device.item]
+          Object.keys(currentobject).forEach(key => {
+              array.push(key);
+              $objectnames = array;
+          });
+      - action: assign
+        name: Create_object_array
+        variable: $objectsarray
+        value: "[]"
+      - action: assign
+        name: Assign_3
+        variable: $ctimestamps
+        value: "[]"
+      - action: foreach
+        name: Foreach_Object
+        blocks:
+          - action: assign
+            name: Create_object_structure
+            variable: $cobject
+            value: "{}"
+          - action: assign
+            name: Object_name
+            variable: "$cobject['name']"
+            value: $Foreach_Object.item
+          - action: assign
+            name: Object_type
+            variable: "$cobject['type']"
+            value: "$content[$Foreach_device.item][$Foreach_Object.item][0]"
+          - action: assign
+            name: Object_description
+            variable: "$cobject['description']"
+            value: $Foreach_Object.item
+          - action: assign
+            name: Object_plugin
+            variable: "$cobject['pluginName']"
+            value: '"DEFERRED"'
+          - action: assign
+            name: Object_automation
+            variable: "$cobject['automaticCreation']"
+            value: "true"
+          - name: Function_3
+            function: "let array = [];\nlet currenttimestamp = $content[$Foreach_device.item][$Foreach_Object.item][1]\n\
+              Object.keys(currenttimestamp).forEach(key => {\n    array.push(key);\n\
+              \    \n});\n$timestamps = array;"
+          - action: system/SevOne/REST v2/Plugins/filterPluginObjectTypes
+            name: Find_Object_type
+            inputs:
+              - name: authKey
+                value: $NMSCredentials
+              - name: dto
+                value: |-
+                  {
+                      "name": $content[$Foreach_device.item][$Foreach_Object.item][0]
+                  }
+              - name: size
+                value: "10000"
+          - action: if
+            name: If_1
+            then:
+              - action: assign
+                name: Assign_9
+                variable: $objecttypeid
+                value: "$Find_Object_type.result.content[0].id"
+            else:
+              - action: system/SevOne/REST v2/Plugins/createPluginObjectType
+                name: Create_Object_type
+                inputs:
+                  - name: authKey
+                    value: $NMSCredentials
+                  - name: pluginObjectType
+                    value: |-
+                      {
+                          "extendedInfo": {},
+                          "pluginId": 10,
+                          "isEnabled": true,
+                          "name": $content[$Foreach_device.item][$Foreach_Object.item][0]
+                      }
+              - action: assign
+                name: Assign_10
+                variable: $objecttypeid
+                value: $Create_Object_type.result.id
+            condition: $Find_Object_type.result.totalElements > 0
+          - action: assign
+            name: Assign_12
+            variable: $ctimestamps
+            value: "[]"
+          - action: foreach
+            name: ForEach_timestamp
+            blocks:
+              - action: assign
+                name: Assign_timestamp
+                variable: $ctimestamp
+                value: "{}"
+              - action: assign
+                name: Assign_current_timestamp
+                variable: "$ctimestamp['timestamp']"
+                value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][\"\
+                  timestamp\"]"
+              - name: Function_4
+                function: "let array = [];\nlet currentindicator = $content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item]\n\
+                  let j = 0;\nObject.keys(currentindicator).forEach(key => {\n   \
+                  \ if (j != 0) {\n        array.push(key);\n    }\n    j = j + 1;\n\
+                  \    \n});\n$indicators = array;"
+              - action: assign
+                name: Assign_4
+                variable: $cindicator
+                value: "[]"
+              - action: foreach
+                name: ForEach_indicator
+                blocks:
+                  - action: system/SevOne/REST v2/Plugins/filterPluginIndicatorTypes
+                    name: Find_Indicator_type
+                    inputs:
+                      - name: authKey
+                        value: $NMSCredentials
+                      - name: dto
+                        value: |-
+                          {
+                              "name": $ForEach_indicator.item,
+                              "pluginObjectTypeId": $objecttypeid
+                          }
+                      - name: size
+                        value: "10000"
+                  - action: system/Common/Array/Array Size
+                    name: Size_indicator
+                    inputs:
+                      - name: array
+                        value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item]"
+                  - action: if
+                    name: If_2
+                    then: []
+                    else:
+                      - action: if
+                        name: Units_types_available
+                        then:
+                          - action: system/SevOne/REST v2/Plugins/createPluginIndicatorType
+                            name: Create_Indicator_type_1
+                            inputs:
+                              - name: authKey
+                                value: $NMSCredentials
+                              - name: pluginIndicatorType
+                                value: |-
+                                  {
+                                      "isDefault": true,
+                                      "isEnabled": true,
+                                      "name": $ForEach_indicator.item,
+                                      "pluginObjectTypeId": $objecttypeid,
+                                      "format": $content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item][2],
+                                      "allowMaximumValue": false,
+                                      "dataUnits": $content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item][1],
+                                      "description": $ForEach_indicator.item,
+                                      "displayUnits": "Number"
+                                  }
+                        else:
+                          - action: system/SevOne/REST v2/Plugins/createPluginIndicatorType
+                            name: Create_Indicator_type
+                            inputs:
+                              - name: authKey
+                                value: $NMSCredentials
+                              - name: pluginIndicatorType
+                                value: |-
+                                  {
+                                      "isDefault": true,
+                                      "isEnabled": true,
+                                      "name": $ForEach_indicator.item,
+                                      "pluginObjectTypeId": $objecttypeid,
+                                      "format": "GAUGE",
+                                      "allowMaximumValue": false,
+                                      "dataUnits": "Number",
+                                      "description": $ForEach_indicator.item,
+                                      "displayUnits": "Number"
+                                  }
+                        condition: $Size_indicator.result > 1
+                    condition: $Find_Indicator_type.result.totalElements > 0
+                  - action: assign
+                    name: Assign_5
+                    variable: $ti
+                    value: "{}"
+                  - action: assign
+                    name: Assign_6
+                    variable: "$ti['name']"
+                    value: $ForEach_indicator.item
+                  - action: if
+                    name: Units_and_type_available
+                    then:
+                      - action: assign
+                        name: Assign_value_2
+                        variable: "$ti['value']"
+                        value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item][0]"
+                      - action: assign
+                        name: Assign_Units
+                        variable: "$ti['units']"
+                        value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item][1]"
+                      - action: assign
+                        name: Assign_Type
+                        variable: "$ti['format']"
+                        value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item][2]"
+                    else:
+                      - action: assign
+                        name: Assign_value
+                        variable: "$ti['value']"
+                        value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item]"
+                    condition: $Size_indicator.result > 1
+                  - action: system/Common/Array/Array Push
+                    name: ArrayPush_2
+                    inputs:
+                      - name: array
+                        value: $cindicator
+                      - name: item
+                        value: $ti
+                list: $indicators
+              - action: assign
+                name: Assign_8
+                value: $cindicator
+                variable: "$ctimestamp['indicators']"
+              - action: system/Common/Array/Array Push
+                name: ArrayPush_1
+                inputs:
+                  - name: array
+                    value: $ctimestamps
+                  - name: item
+                    value: $ctimestamp
+            list: $timestamps
+          - action: assign
+            name: Assign_2
+            variable: "$cobject['timestamps']"
+            value: $ctimestamps
+          - action: system/Common/Array/Array Push
+            name: ArrayPush_3
+            inputs:
+              - name: array
+                value: $objectsarray
+              - name: item
+                value: $cobject
+        list: $objectnames
+      - action: assign
+        name: Assign_objects_to_body
+        variable: "$body['objects']"
+        value: $objectsarray
+      - action: system/SevOne/REST v3/Devices/Devices Data
+        name: Insert_data
+        inputs:
+          - name: authKey
+            value: $NMSCredentials
+          - name: body
+            value: $body
+        breakpoint: enabled
+    list: $devicenames
+  - action: assign
+    name: Assign_1
+    variable: $result
+    value: $Insert_data.result
+variables:
+  - name: result
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: any
+    value: '""'
+  - name: body
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+  - name: content
+    required: false
+    isInput: true
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+    meta:
+      notLogged: true
+  - name: objectsarray
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: array
+    value: "[]"
+    meta:
+      notLogged: true
+  - name: devicenames
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: array
+    value: "[]"
+    meta:
+      notLogged: true
+  - name: timestamps
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: array
+    value: "[]"
+    meta:
+      notLogged: true
+  - name: indicators
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: string
+    value: '""'
+    meta:
+      notLogged: true
+  - name: ctimestamps
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: array
+    value: "[]"
+    meta:
+      notLogged: true
+  - name: ti
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+    meta:
+      notLogged: true
+  - name: cobject
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: array
+    value: "[]"
+    meta:
+      notLogged: true
+  - name: cindicator
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+    meta:
+      notLogged: true
+  - name: NMSCredentials
+    required: false
+    isInput: true
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: string
+    value: '""'
+    meta:
+      authType: SevOne
+meta:
+  version: 5
+  layout: flat
+  workerGroup: default
+finally: null

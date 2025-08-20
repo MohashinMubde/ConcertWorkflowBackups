@@ -1,0 +1,1388 @@
+name: SevOne Ingest Data - APIv3 (new v3 version)
+platform: node
+blocks:
+  - action: assign
+    name: Assign_11
+    variable: $NMSCredentials
+    value: '"admin/Test_SevOne_HCM_Raul"'
+    skipped: true
+  - action: assign
+    name: Declare_Content
+    variable: $content
+    value: |-
+      {
+          "Load Balancer - 169.54.196.174:80": {
+              "Load Balancer": ["IBM Load Balancer", {
+                  "timestamp1": {
+                      "timestamp": 1707831112,
+                      "ibm_cloud_load_balancer_active_connections": [0, "Number", "GAUGE"],
+                      "ibm_cloud_load_balancer_connection_rate": [0, "Number", "GAUGE"],
+                      "ibm_cloud_load_balancer_throughput": [0, "Number", "GAUGE"]
+                  }
+              }]
+          },
+          "Load Balancer - 169.54.196.174:8443": {
+              "Load Balancer": ["IBM Load Balancer", {
+                  "timestamp1": {
+                      "timestamp": 1707831112,
+                      "ibm_cloud_load_balancer_active_connections": [0, "Number", "GAUGE"],
+                      "ibm_cloud_load_balancer_connection_rate": [0, "Number", "GAUGE"],
+                      "ibm_cloud_load_balancer_throughput": [0, "Number", "GAUGE"]
+                  }
+              }]
+          },
+          "Load Balancer - 169.55.233.152:80": {
+              "Load Balancer": ["IBM Load Balancer", {
+                  "timestamp1": {
+                      "timestamp": 1707831112,
+                      "ibm_cloud_load_balancer_active_connections": [0, "Number", "GAUGE"],
+                      "ibm_cloud_load_balancer_connection_rate": [0, "Number", "GAUGE"],
+                      "ibm_cloud_load_balancer_throughput": [0, "Number", "GAUGE"]
+                  }
+              }]
+          },
+          "Load Balancer - 169.55.233.152:8443": {
+              "Load Balancer": ["IBM Load Balancer", {
+                  "timestamp1": {
+                      "timestamp": 1719905730,
+                      "ibm_cloud_load_balancer_active_connections": [0, "Number", "GAUGE"],
+                      "ibm_cloud_load_balancer_connection_rate": [0, "Number", "GAUGE"],
+                      "ibm_cloud_load_balancer_throughput": [0, "Number", "GAUGE"]
+                  }
+              }]
+          },
+          "coc-rtp-vpn": {
+              "VPN Connection": ["IBM VPN Connection", {
+                  "timestamp1": {
+                      "timestamp": 1719905730,
+                      "ibm_is_vpn_connection_status": [1, "Number", "GAUGE"],
+                      "ibm_is_vpn_connection_bytes_in": [26808, "Bytes", "GAUGE"],
+                      "ibm_is_vpn_connection_bytes_out": [16824, "Bytes", "GAUGE"],
+                      "ibm_is_vpn_connection_packets_in": [52, "Number", "GAUGE"],
+                      "ibm_is_vpn_connection_packets_out": [63, "Number", "GAUGE"]
+                  }
+              }]
+          },
+          "coc-rtp": {
+              "VPN Gateway": ["IBM VPN Gateway", {
+                  "timestamp1": {
+                      "timestamp": 1719905730,
+                      "ibm_is_vpn_gateway_status": [1, "Number", "GAUGE"],
+                      "ibm_is_vpn_gateway_bytes_in": [26808, "Bytes", "GAUGE"],
+                      "ibm_is_vpn_gateway_bytes_out": [16824, "Bytes", "GAUGE"],
+                      "ibm_is_vpn_gateway_packets_in": [52, "Number", "GAUGE"],
+                      "ibm_is_vpn_gateway_packets_out": [63, "Number", "GAUGE"]
+                  }
+              }]
+          },
+          "IBM Workspace": {
+              "Workspace Status": ["IBM Workspace", {
+                  "timestamp1": {
+                      "timestamp": 1719905730,
+                      "Total": [3, "Number", "GAUGE"],
+                      "Active": [0, "Number", "GAUGE"],
+                      "Draft": [0, "Number", "GAUGE"],
+                      "Inactive": [0, "Number", "GAUGE"],
+                      "Template Error": [0, "Number", "GAUGE"],
+                      "Total - Apply": [0, "Number", "GAUGE"],
+                      "Total - Destroy": [0, "Number", "GAUGE"],
+                      "Total - Plan": [0, "Number", "GAUGE"],
+                      "ibm_schematics_vulnerability_count": [0, "Number", "GAUGE"]
+                  }
+              }]
+          }
+      }
+    skipped: true
+  - name: Function_1
+    function: |-
+      let array = [];
+      Object.keys($content).forEach(key => {
+          array.push(key);
+          $devicenames = array;
+      })
+  - action: foreach
+    name: Foreach_device
+    blocks:
+      - action: system/SevOne/REST v3/Metadata/Metadata Devices (POST)
+        name: Search_Device
+        inputs:
+          - name: authKey
+            value: $NMSCredentials
+          - name: body
+            value: |-
+              {
+                  "name": {
+                      "value": $Foreach_device.item
+                  }
+              }
+        breakpoint: enabled
+      - action: assign
+        name: Devicefound
+        variable: $devicefound
+        value: "-1"
+      - action: foreach
+        name: ForEach_1
+        blocks:
+          - action: assign
+            name: This_device_name
+            variable: $devicenamecheck
+            value: $ForEach_1.item.name
+          - action: if
+            name: If_3
+            then:
+              - action: assign
+                name: Assign_13
+                variable: $devicefound
+                value: $ForEach_1.item.id
+              - action: assign
+                name: Assign_14
+                variable: $devicefoundip
+                value: $ForEach_1.item.ipAddress
+            else: []
+            condition: $devicenamecheck == $Foreach_device.item
+        list: $Search_Device.result.devices
+      - action: if
+        name: Found_Device
+        then:
+          - action: assign
+            name: Define_DeviceID
+            variable: $deviceid
+            value: $devicefound
+          - action: assign
+            name: Bodyname
+            variable: "$body['name']"
+            value: $Foreach_device.item
+          - action: assign
+            name: BodyIP
+            variable: "$body['ip']"
+            value: $devicefoundip
+          - action: assign
+            name: Body_type
+            variable: "$body['type']"
+            value: "$Search_Device.result.devices[0].name"
+          - action: assign
+            name: Body_automatic
+            variable: "$body['automaticCreation']"
+            value: "true"
+        else:
+          - action: system/SevOne/REST v3/Devices/Devices Create
+            name: Create_Device
+            inputs:
+              - name: authKey
+                value: $NMSCredentials
+              - name: body
+                value: |-
+                  {
+                      "altName": $Foreach_device.item,
+                      "description": "Created by Pliant API",
+                      "ipAddress": "0.0.0.0",
+                      "name": $Foreach_device.item
+                  }
+          - action: assign
+            name: Define_DeviceID2
+            variable: $deviceid
+            value: $Create_Device.result.id
+          - action: assign
+            name: body_name2
+            variable: "$body['name']"
+            value: $Foreach_device.item
+          - action: assign
+            name: Body_ip2
+            variable: "$body['ip]']"
+            value: '"0.0.0.0"'
+          - action: assign
+            name: body_type2
+            variable: "$body['type']"
+            value: $Foreach_device.item
+          - action: assign
+            name: body_automatic2
+            variable: "$body['automaticCreation']"
+            value: "true"
+        condition: $devicefound > -1
+      - name: Function_2
+        function: |-
+          let array = [];
+          let currentobject = $content[$Foreach_device.item]
+          Object.keys(currentobject).forEach(key => {
+              array.push(key);
+              $objectnames = array;
+          });
+      - action: assign
+        name: Create_object_array
+        variable: $objectsarray
+        value: "[]"
+      - action: assign
+        name: Assign_3
+        variable: $ctimestamps
+        value: "[]"
+      - action: foreach
+        name: Foreach_Object
+        blocks:
+          - action: assign
+            name: Create_object_structure
+            variable: $cobject
+            value: "{}"
+          - action: assign
+            name: Object_name
+            variable: "$cobject['name']"
+            value: $Foreach_Object.item
+          - action: assign
+            name: Object_type
+            variable: "$cobject['type']"
+            value: "$content[$Foreach_device.item][$Foreach_Object.item][0]"
+          - action: assign
+            name: Object_description
+            variable: "$cobject['description']"
+            value: $Foreach_Object.item
+          - action: assign
+            name: Object_plugin
+            variable: "$cobject['pluginName']"
+            value: '"DEFERRED"'
+          - action: assign
+            name: Object_automation
+            variable: "$cobject['automaticCreation']"
+            value: "true"
+          - name: Function_3
+            function: "let array = [];\nlet currenttimestamp = $content[$Foreach_device.item][$Foreach_Object.item][1]\n\
+              Object.keys(currenttimestamp).forEach(key => {\n    array.push(key);\n\
+              \    \n});\n$timestamps = array;"
+          - action: system/SevOne/REST v3/Metadata/Metadata Object Types (POST)
+            name: Find_Object_type
+            inputs:
+              - name: authKey
+                value: $NMSCredentials
+              - name: body
+                value: |-
+                  {
+                      "names": [{
+                          "fuzzy": true,
+                          "type": "FUZZABLE_STRING_TYPE_REGEX",
+                          "value": $content[$Foreach_device.item][$Foreach_Object.item][0]
+                      }]
+                  }
+          - action: system/Common/Array/Array Size
+            name: ArraySize_1
+            inputs:
+              - name: array
+                value: $Find_Object_type.result.objectTypes
+          - action: if
+            name: If_1
+            then:
+              - action: assign
+                name: Assign_9
+                variable: $objecttypeid
+                value: "$Find_Object_type.result.objectTypes[0].id"
+            else:
+              - action: system/SevOne/REST v3/Plugins/Plugins Create Object Type
+                name: Create_Object_type
+                inputs:
+                  - name: authKey
+                    value: $NMSCredentials
+                  - name: body
+                    value: |-
+                      {
+                          "pluginId": 10,
+                          "name": $content[$Foreach_device.item][$Foreach_Object.item][0]
+                      }
+              - action: assign
+                name: Assign_10
+                variable: $objecttypeid
+                value: $Create_Object_type.result.id
+            condition: $ArraySize_1.result > 0
+          - action: assign
+            name: Assign_12
+            variable: $ctimestamps
+            value: "[]"
+          - action: foreach
+            name: ForEach_timestamp
+            blocks:
+              - action: assign
+                name: Assign_timestamp
+                variable: $ctimestamp
+                value: "{}"
+              - action: assign
+                name: Assign_current_timestamp
+                variable: "$ctimestamp['timestamp']"
+                value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][\"\
+                  timestamp\"]"
+              - name: Function_4
+                function: "let array = [];\nlet currentindicator = $content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item]\n\
+                  let j = 0;\nObject.keys(currentindicator).forEach(key => {\n   \
+                  \ if (j != 0) {\n        array.push(key);\n    }\n    j = j + 1;\n\
+                  \    \n});\n$indicators = array;"
+              - action: assign
+                name: Assign_4
+                variable: $cindicator
+                value: "[]"
+              - action: foreach
+                name: ForEach_indicator
+                blocks:
+                  - action: system/SevOne/REST v3/Metadata/Metadata Indicator Types
+                      (POST)
+                    name: Find_Indicator_type
+                    inputs:
+                      - name: authKey
+                        value: $NMSCredentials
+                      - name: body
+                        value: |-
+                          {
+                              "filters": [{
+                                  "indicatorTypeNames": [{
+                                      "fuzzy": true,
+                                      "type": "FUZZABLE_STRING_TYPE_EXACT",
+                                      "value": $ForEach_indicator.item
+                                  }],
+                                  "objectTypeIds": [$objecttypeid]
+                              }]
+                          }
+                  - action: system/Common/Array/Array Size
+                    name: Size_indicator
+                    inputs:
+                      - name: array
+                        value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item]"
+                  - action: system/Common/Array/Array Size
+                    name: Size_search_indicator
+                    inputs:
+                      - name: array
+                        value: $Find_Indicator_type.result.indicatorTypes
+                  - action: if
+                    name: If_2
+                    then: []
+                    else:
+                      - action: if
+                        name: Units_types_available
+                        then:
+                          - action: system/SevOne/REST v3/Plugins/Plugins Create Indicator
+                              Type
+                            name: Create_indicator_type_3
+                            inputs:
+                              - name: authKey
+                                value: $NMSCredentials
+                              - name: body
+                                value: |-
+                                  {
+                                      "isDefault": true,
+                                      "isEnabled": true,
+                                      "name": $ForEach_indicator.item,
+                                      "pluginObjectTypeId": $objecttypeid,
+                                      "format": $content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item][2],
+                                      "allowMaximumValue": false,
+                                      "dataUnits": $content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item][1],
+                                      "description": $ForEach_indicator.item,
+                                      "displayUnits": "Number"
+                                  }
+                        else:
+                          - action: system/SevOne/REST v3/Plugins/Plugins Create Indicator
+                              Type
+                            name: Create_indicator_type_4
+                            inputs:
+                              - name: authKey
+                                value: $NMSCredentials
+                              - name: body
+                                value: |-
+                                  {
+                                      "isDefault": true,
+                                      "isEnabled": true,
+                                      "name": $ForEach_indicator.item,
+                                      "pluginObjectTypeId": $objecttypeid,
+                                      "format": "GAUGE",
+                                      "allowMaximumValue": false,
+                                      "dataUnits": "Number",
+                                      "description": $ForEach_indicator.item,
+                                      "displayUnits": "Number"
+                                  }
+                        condition: $Size_indicator.result > 1
+                    condition: $Size_search_indicator.result > 0
+                  - action: assign
+                    name: Assign_5
+                    variable: $ti
+                    value: "{}"
+                  - action: assign
+                    name: Assign_6
+                    variable: "$ti['name']"
+                    value: $ForEach_indicator.item
+                  - action: if
+                    name: Units_and_type_available
+                    then:
+                      - action: assign
+                        name: Assign_value_2
+                        variable: "$ti['value']"
+                        value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item][0]"
+                      - action: assign
+                        name: Assign_Units
+                        variable: "$ti['units']"
+                        value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item][1]"
+                      - action: assign
+                        name: Assign_Type
+                        variable: "$ti['format']"
+                        value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item][2]"
+                    else:
+                      - action: assign
+                        name: Assign_value
+                        variable: "$ti['value']"
+                        value: "$content[$Foreach_device.item][$Foreach_Object.item][1][$ForEach_timestamp.item][$ForEach_indicator.item]"
+                    condition: $Size_indicator.result > 1
+                  - action: system/Common/Array/Array Push
+                    name: ArrayPush_2
+                    inputs:
+                      - name: array
+                        value: $cindicator
+                      - name: item
+                        value: $ti
+                list: $indicators
+              - action: assign
+                name: Assign_8
+                value: $cindicator
+                variable: "$ctimestamp['indicators']"
+              - action: system/Common/Array/Array Push
+                name: ArrayPush_1
+                inputs:
+                  - name: array
+                    value: $ctimestamps
+                  - name: item
+                    value: $ctimestamp
+            list: $timestamps
+          - action: assign
+            name: Assign_2
+            variable: "$cobject['timestamps']"
+            value: $ctimestamps
+          - action: system/Common/Array/Array Push
+            name: ArrayPush_3
+            inputs:
+              - name: array
+                value: $objectsarray
+              - name: item
+                value: $cobject
+            breakpoint: enabled
+        list: $objectnames
+      - action: assign
+        name: Assign_objects_to_body
+        variable: "$body['objects']"
+        value: $objectsarray
+      - action: system/SevOne/REST v3/Devices/Devices Data
+        name: Insert_data
+        inputs:
+          - name: authKey
+            value: $NMSCredentials
+          - name: body
+            value: $body
+        breakpoint: enabled
+    list: $devicenames
+  - action: assign
+    name: Assign_1
+    variable: $result
+    value: $Insert_data.result
+variables:
+  - name: result
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: any
+    value: '""'
+  - name: body
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+  - name: content
+    required: true
+    isInput: true
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{\"sevone-demo-replay\":{\"CPU\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_average_cpu_usage_percentage\":[79.268987,\"Percent\"\
+      ,\"GAUGE\"],\"ibm_is_instance_cpus\":[4,\"Number\",\"GAUGE\"]}}],\"CPU Core\
+      \ - 2\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[10359416650000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[9809602740000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 0\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[9037970470000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[6579028450000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_memory_usage_percentage\"\
+      :[98.893452,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[179408,\"\
+      Kilobits\",\"GAUGE\"],\"ibm_is_instance_memory_total_kib\":[16213292,\"Kilobits\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_usable\":[9523784,\"Number\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_usable_percentage\":[58.740594,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_used_kib\":[16033884,\"Kilobits\",\"GAUGE\"]}}],\"\
+      Interface - 02:00:03:33:16:30\":[\"IBM Interface\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_network_in_bytes\":[66753697608,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_bytes\":[4945804119799,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_in_dropped_packets\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_dropped_packets\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_in_errors\":[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_errors\"\
+      :[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_packets\":[260713857,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_packets\":[9366767601,\"\
+      Number\",\"COUNTER64\"]}}],\"Volume - vda\":[\"IBM Volume\",{\"timestamp1\"\
+      :{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\":[507752150016,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[5172062538752,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[3782546,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[31095920,\"\
+      Number\",\"COUNTER64\"]}}],\"Volume - vdb\":[\"IBM Volume\",{\"timestamp1\"\
+      :{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\":[8712192,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[325,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"]}}],\"\
+      Volume - vdc\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[286720,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[73,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Volume - vdd\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_volume_read_bytes\":[106496,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[26,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"\
+      Number\",\"COUNTER64\"]}}],\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[1,\"Number\",\"GAUGE\"]}}]},\"\
+      sevone-nms-100k\":{\"CPU\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_average_cpu_usage_percentage\":[37.860055,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_cpus\":[16,\"Number\",\"GAUGE\"]}}],\"CPU Core - 14\":[\"\
+      IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[4133431820000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 0\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[3897795570000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 2\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[3879525540000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 8\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[3861005350000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 6\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[3859980990000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 12\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[3840095200000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 10\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[3746235760000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 5\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[3701783680000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 4\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[3155294490000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 11\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[3093196960000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[3092758180000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 9\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[2906012810000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[2893605840000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 13\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[2888182330000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 7\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[2860757770000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 15\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[2694746270000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_memory_usage_percentage\"\
+      :[95.25231,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[3124700,\"\
+      Kilobits\",\"GAUGE\"],\"ibm_is_instance_memory_total_kib\":[65815156,\"Kilobits\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_usable\":[46852856,\"Number\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_usable_percentage\":[71.188552,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_used_kib\":[62690456,\"Kilobits\",\"GAUGE\"]}}],\"\
+      Interface - 02:00:14:33:16:30\":[\"IBM Interface\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_network_in_bytes\":[2092089131630,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_bytes\":[1594193407566,\"Bytes\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_network_in_dropped_packets\":[43,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_network_out_dropped_packets\":[0,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_network_in_errors\":[43,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_errors\":[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_packets\"\
+      :[5896681270,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_packets\"\
+      :[5565846533,\"Number\",\"COUNTER64\"]}}],\"Volume - vdd\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[7921707855872,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[29175147156992,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[289468776,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[1212948609,\"Number\",\"COUNTER64\"]}}],\"Volume - vdc\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[832706306048,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[3710979382784,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[5644343,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[132041540,\"Number\",\"COUNTER64\"]}}],\"Volume - vda\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[510243287040,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[16444782078976,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[7030374,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[184377780,\"Number\",\"COUNTER64\"]}}],\"Volume - vdb\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[32120832,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[1307,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"\
+      ]}}],\"Volume - vde\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[1085440,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[271,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Volume - vdf\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_volume_read_bytes\":[417792,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[102,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"\
+      Number\",\"COUNTER64\"]}}],\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[1,\"Number\",\"GAUGE\"]}}]},\"\
+      sevone-mimic\":{\"CPU\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_average_cpu_usage_percentage\":[29.101086,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_cpus\":[8,\"Number\",\"GAUGE\"]}}],\"CPU Core - 6\":[\"\
+      IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[477466750000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 4\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[473755620000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 2\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[472594800000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[467866260000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 5\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[460810720000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 7\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[457484850000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 0\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[423256050000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[401650700000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_memory_usage_percentage\"\
+      :[41.278424,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[19248240,\"\
+      Kilobits\",\"GAUGE\"],\"ibm_is_instance_memory_total_kib\":[32778820,\"Kilobits\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_usable\":[26026652,\"Number\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_usable_percentage\":[79.400821,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_used_kib\":[13530580,\"Kilobits\",\"GAUGE\"]}}],\"\
+      Interface - 02:00:03:33:16:33\":[\"IBM Interface\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_network_in_bytes\":[94520849640,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_bytes\":[138720191926,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_in_dropped_packets\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_dropped_packets\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_in_errors\":[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_errors\"\
+      :[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_packets\":[470725152,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_packets\":[525840611,\"\
+      Number\",\"COUNTER64\"]}}],\"Volume - vda\":[\"IBM Volume\",{\"timestamp1\"\
+      :{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\":[6941795840,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[23239298048,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[363086,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[1424512,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Volume - vdb\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_volume_read_bytes\":[8044544,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[307,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"\
+      Number\",\"COUNTER64\"]}}],\"Volume - vdc\":[\"IBM Volume\",{\"timestamp1\"\
+      :{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\":[206848,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[55,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"]}}],\"\
+      Volume - vdd\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[73728,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[18,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[1,\"Number\",\"GAUGE\"]}}]},\"\
+      sevone-nms-staging\":{\"CPU\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_average_cpu_usage_percentage\":[23.950779,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_cpus\":[32,\"Number\",\"GAUGE\"]}}],\"CPU Core - 0\":[\"\
+      IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[2107447250000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 4\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[2042616150000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 2\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[2040894360000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 6\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[2039945190000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1925545710000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 7\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1886708160000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1878197860000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 5\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1873763250000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 28\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1848746940000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 16\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1848161780000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 22\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1839412930000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 26\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1833759220000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 18\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1833202320000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 20\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1831739570000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 24\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1829764190000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 30\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1821978590000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 14\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1819265830000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 12\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1815406580000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 10\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1812123200000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 8\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1784518250000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 21\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1657071550000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 9\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1645407940000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 19\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1638704660000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 23\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1633557390000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 11\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1628159870000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 15\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1619091590000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 29\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1618738790000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 13\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1615799490000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 17\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1614298520000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 31\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1613691460000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 25\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1611214430000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 27\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1607938390000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_memory_usage_percentage\"\
+      :[99.032494,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[1275864,\"\
+      Kilobits\",\"GAUGE\"],\"ibm_is_instance_memory_total_kib\":[131871316,\"Kilobits\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_usable\":[94645820,\"Number\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_usable_percentage\":[71.771348,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_used_kib\":[130595452,\"Kilobits\",\"GAUGE\"]}}],\"\
+      Interface - 02:00:1c:33:16:30\":[\"IBM Interface\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_network_in_bytes\":[932691224018,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_bytes\":[579771206419,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_errors\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_errors\":[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_packets\"\
+      :[2266639502,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_packets\"\
+      :[2189512138,\"Number\",\"COUNTER64\"]}}],\"Volume - vde\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[6226254197248,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[9164416987136,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[328845504,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[525575524,\"Number\",\"COUNTER64\"]}}],\"Volume - vda\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[2600113163264,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[4409210162176,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[36901957,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[78017984,\"Number\",\"COUNTER64\"]}}],\"Volume - vdd\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[1754709025280,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[4409925438976,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[18610937,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[87873249,\"Number\",\"COUNTER64\"]}}],\"Volume - vdb\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[56512512,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[2291,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"\
+      ]}}],\"Volume - vdc\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[56512512,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[2291,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Volume - vdf\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_volume_read_bytes\":[1785856,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[463,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"\
+      Number\",\"COUNTER64\"]}}],\"Volume - vdg\":[\"IBM Volume\",{\"timestamp1\"\
+      :{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\":[663552,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[162,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"]}}],\"\
+      Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_running_state\"\
+      :[1,\"Number\",\"GAUGE\"]}}]},\"coc-nms\":{\"CPU\":[\"IBM CPU\",{\"timestamp1\"\
+      :{\"timestamp\":1689928308,\"ibm_is_instance_average_cpu_usage_percentage\"\
+      :[14.257034,\"Percent\",\"GAUGE\"],\"ibm_is_instance_cpus\":[8,\"Number\",\"\
+      GAUGE\"]}}],\"CPU Core - 6\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_cpu_usage_nanoseconds\":[656995260000000,\"Nanoseconds\",\"\
+      COUNTER32\"]}}],\"CPU Core - 0\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[655823320000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 4\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[645244070000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 2\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[638133550000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[564432220000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 5\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[554299770000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[550503540000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 7\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[537247680000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_memory_usage_percentage\":[96.58704,\"Percent\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[1116764,\"Kilobits\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_total_kib\":[32721268,\"Kilobits\",\"GAUGE\"],\"\
+      ibm_is_instance_memory_usable\":[22425952,\"Number\",\"GAUGE\"],\"ibm_is_instance_memory_usable_percentage\"\
+      :[68.536318,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_used_kib\":[31604504,\"\
+      Kilobits\",\"GAUGE\"]}}],\"Interface - 02:00:10:33:16:30\":[\"IBM Interface\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_network_in_bytes\"\
+      :[16895876511,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_network_out_bytes\"\
+      :[3168575742,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_network_in_dropped_packets\"\
+      :[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_dropped_packets\"\
+      :[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_errors\":[0,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_network_out_errors\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_in_packets\":[18021893,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_packets\":[18262110,\"Number\",\"COUNTER64\"\
+      ]}}],\"Volume - vda\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[6229285888,\"Bytes\",\"COUNTER64\"],\"\
+      ibm_is_instance_volume_write_bytes\":[1046504021504,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_read_requests\":[189654,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_requests\":[91051703,\"Number\",\"COUNTER64\"\
+      ]}}],\"Volume - vdd\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[510816768,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[71698273280,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[3014,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[4401698,\"\
+      Number\",\"COUNTER64\"]}}],\"Volume - vdb\":[\"IBM Volume\",{\"timestamp1\"\
+      :{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\":[501760,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[127,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"]}}],\"\
+      Volume - vdc\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[204800,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[50,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[1,\"Number\",\"GAUGE\"]}}]},\"\
+      sevone-dnc-100\":{\"CPU\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_average_cpu_usage_percentage\":[13.644569,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_cpus\":[16,\"Number\",\"GAUGE\"]}}],\"CPU Core - 12\":[\"\
+      IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[474193990000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 14\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[459416840000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 13\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[451000190000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 15\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[448193210000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 10\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[433307250000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 8\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[431336750000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 9\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[402506560000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 11\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[394620430000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 4\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[347800590000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 6\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[344752550000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 0\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[329099850000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 2\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[320747660000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 7\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[320277360000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 5\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[319641330000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[299862070000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[296059950000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_memory_usage_percentage\"\
+      :[81.752689,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[12009400,\"\
+      Kilobits\",\"GAUGE\"],\"ibm_is_instance_memory_total_kib\":[65814628,\"Kilobits\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_usable\":[52777996,\"Number\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_usable_percentage\":[80.191893,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_used_kib\":[53805228,\"Kilobits\",\"GAUGE\"]}}],\"\
+      Interface - 02:00:15:33:16:30\":[\"IBM Interface\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_network_in_bytes\":[607766757022,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_bytes\":[36670465027,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_errors\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_errors\":[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_packets\"\
+      :[1177046616,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_packets\"\
+      :[171783520,\"Number\",\"COUNTER64\"]}}],\"Volume - vdc\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[3512312042496,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[19651892208128,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[214441100,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[1003197620,\"Number\",\"COUNTER64\"]}}],\"Volume - vda\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[13986012160,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[4436216807936,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[194746,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[40495550,\"Number\",\"COUNTER64\"]}}],\"Volume - vdb\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[401175040,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[48786164224,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[11005,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[1800297,\"Number\",\"COUNTER64\"]}}],\"Volume - vdd\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[450560,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[112,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"\
+      ]}}],\"Volume - vde\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[180224,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[44,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[1,\"Number\",\"GAUGE\"]}}]},\"\
+      sevone-pliant-8\":{\"CPU\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_average_cpu_usage_percentage\":[11.349962,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_cpus\":[4,\"Number\",\"GAUGE\"]}}],\"CPU Core - 0\":[\"\
+      IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1362957560000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1358897760000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1348986610000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 2\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1348686250000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_memory_usage_percentage\"\
+      :[58.040184,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[6880616,\"\
+      Kilobits\",\"GAUGE\"],\"ibm_is_instance_memory_total_kib\":[16398108,\"Kilobits\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_usable\":[9821168,\"Number\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_usable_percentage\":[59.892081,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_used_kib\":[9517492,\"Kilobits\",\"GAUGE\"]}}],\"\
+      Interface - 02:00:0c:33:16:30\":[\"IBM Interface\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_network_in_bytes\":[463065603964,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_bytes\":[211367173486,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_errors\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_errors\":[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_packets\"\
+      :[979985917,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_packets\"\
+      :[1153711856,\"Number\",\"COUNTER64\"]}}],\"Volume - vda\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[152018788864,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[5442833326080,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[3064184,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[309898107,\"Number\",\"COUNTER64\"]}}],\"Volume - vdb\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[14635008,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[573,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"\
+      ]}}],\"Volume - vdc\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[1830912,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[111,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Volume - vdd\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_volume_read_bytes\":[430080,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[51,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"\
+      Number\",\"COUNTER64\"]}}],\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[1,\"Number\",\"GAUGE\"]}}]},\"\
+      coc-di\":{\"CPU\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_average_cpu_usage_percentage\":[9.687158,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_cpus\":[8,\"Number\",\"GAUGE\"]}}],\"CPU Core - 2\":[\"\
+      IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[978918740000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 6\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[975917330000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 0\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[974334440000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 4\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[972893400000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[694587090000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 5\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[683226130000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 7\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[679253870000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[678754010000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_memory_usage_percentage\"\
+      :[76.360113,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[7749052,\"\
+      Kilobits\",\"GAUGE\"],\"ibm_is_instance_memory_total_kib\":[32779564,\"Kilobits\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_usable\":[24938056,\"Number\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_usable_percentage\":[76.078059,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_used_kib\":[25030512,\"Kilobits\",\"GAUGE\"]}}],\"\
+      Interface - 02:00:1a:33:16:30\":[\"IBM Interface\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_network_in_bytes\":[180578566943,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_bytes\":[2028676649,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_errors\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_errors\":[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_packets\"\
+      :[19644079,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_packets\"\
+      :[15198142,\"Number\",\"COUNTER64\"]}}],\"Volume - vda\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[8728493568,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[1184383670784,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[58044,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[50186935,\"Number\",\"COUNTER64\"]}}],\"Volume - vdb\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[81920,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[20,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"\
+      ]}}],\"Volume - vdc\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[40960,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[10,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[1,\"Number\",\"GAUGE\"]}}]},\"\
+      plotkin-nms-dev\":{\"CPU\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_average_cpu_usage_percentage\":[6.597573,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_cpus\":[8,\"Number\",\"GAUGE\"]}}],\"CPU Core - 0\":[\"\
+      IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[117914020000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[114281210000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 4\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[113614410000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 5\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[112757100000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 6\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[112374400000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 2\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[110292720000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[108791110000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 7\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[108692400000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_memory_usage_percentage\"\
+      :[57.264207,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[13983468,\"\
+      Kilobits\",\"GAUGE\"],\"ibm_is_instance_memory_total_kib\":[32720740,\"Kilobits\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_usable\":[19681600,\"Number\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_usable_percentage\":[60.150229,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_used_kib\":[18737272,\"Kilobits\",\"GAUGE\"]}}],\"\
+      Interface - 02:00:31:33:16:30\":[\"IBM Interface\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_network_in_bytes\":[53531410,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_bytes\":[97977171,\"Bytes\",\"COUNTER64\"],\"\
+      ibm_is_instance_network_in_dropped_packets\":[0,\"Number\",\"COUNTER64\"],\"\
+      ibm_is_instance_network_out_dropped_packets\":[0,\"Number\",\"COUNTER64\"],\"\
+      ibm_is_instance_network_in_errors\":[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_errors\"\
+      :[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_packets\":[631902,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_packets\":[649497,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Volume - vda\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_volume_read_bytes\":[2803595776,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_bytes\":[113894657024,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_read_requests\":[31168,\"Number\",\"COUNTER64\"],\"\
+      ibm_is_instance_volume_write_requests\":[9363589,\"Number\",\"COUNTER64\"]}}],\"\
+      Volume - vdc\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[1392515072,\"Bytes\",\"COUNTER64\"],\"\
+      ibm_is_instance_volume_write_bytes\":[136328817664,\"Bytes\",\"COUNTER64\"],\"\
+      ibm_is_instance_volume_read_requests\":[17442,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[11454338,\"Number\",\"COUNTER64\"]}}],\"Volume - vdb\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[61535232,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[13418602496,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[1651,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[1598336,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Volume - vdd\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_volume_read_bytes\":[286720,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[73,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"\
+      Number\",\"COUNTER64\"]}}],\"Volume - vde\":[\"IBM Volume\",{\"timestamp1\"\
+      :{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\":[106496,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[26,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"]}}],\"\
+      Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_running_state\"\
+      :[1,\"Number\",\"GAUGE\"]}}]},\"sevone-di-staging\":{\"CPU\":[\"IBM CPU\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_average_cpu_usage_percentage\"\
+      :[5.778457,\"Percent\",\"GAUGE\"],\"ibm_is_instance_cpus\":[16,\"Number\",\"\
+      GAUGE\"]}}],\"CPU Core - 0\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_cpu_usage_nanoseconds\":[272814060000000,\"Nanoseconds\",\"\
+      COUNTER32\"]}}],\"CPU Core - 2\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[248935140000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 8\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[239068870000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 12\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[230275420000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 4\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[227228650000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 10\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[224168420000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[222159050000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 14\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[219090710000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 6\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[209329330000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 11\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[207461380000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 7\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[200546500000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 15\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[197826140000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[189073000000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 9\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[167103420000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 13\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[157237640000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"CPU Core - 5\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\":[153046250000000,\"Nanoseconds\"\
+      ,\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_memory_usage_percentage\":[70.136109,\"Percent\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[19652076,\"Kilobits\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_total_kib\":[65805476,\"Kilobits\",\"GAUGE\"],\"\
+      ibm_is_instance_memory_usable\":[53327428,\"Number\",\"GAUGE\"],\"ibm_is_instance_memory_usable_percentage\"\
+      :[81.03798,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_used_kib\":[46153400,\"\
+      Kilobits\",\"GAUGE\"]}}],\"Interface - 02:00:1e:33:16:30\":[\"IBM Interface\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_network_in_bytes\"\
+      :[70811257062,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_network_out_bytes\"\
+      :[21088560313,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_network_in_dropped_packets\"\
+      :[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_dropped_packets\"\
+      :[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_errors\":[0,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_network_out_errors\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_in_packets\":[41554995,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_packets\":[41531520,\"Number\",\"COUNTER64\"\
+      ]}}],\"Volume - vda\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[19422358528,\"Bytes\",\"COUNTER64\"],\"\
+      ibm_is_instance_volume_write_bytes\":[1010222330880,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_read_requests\":[199295,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_requests\":[44127624,\"Number\",\"COUNTER64\"\
+      ]}}],\"Volume - vdb\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[245760,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[60,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Volume - vdc\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_volume_read_bytes\":[122880,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[30,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"\
+      Number\",\"COUNTER64\"]}}],\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[1,\"Number\",\"GAUGE\"]}}]},\"\
+      sevone-di\":{\"CPU\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_average_cpu_usage_percentage\":[4.518653,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_cpus\":[16,\"Number\",\"GAUGE\"]}}],\"CPU Core - 0\":[\"\
+      IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1140069200000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 4\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1085931610000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 6\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1068922760000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 2\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1054356420000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 12\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[1022843430000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 8\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[981796550000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 14\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[964515750000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 10\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[908552560000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[746764680000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 11\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[722389400000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 5\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[634534420000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 13\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[611386770000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[599000070000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 7\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[578023180000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 15\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[479951620000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 9\":[\"IBM\
+      \ CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[477372230000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_memory_usage_percentage\"\
+      :[73.661481,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[17332324,\"\
+      Kilobits\",\"GAUGE\"],\"ibm_is_instance_memory_total_kib\":[65805992,\"Kilobits\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_usable\":[51848440,\"Number\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_usable_percentage\":[78.789847,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_used_kib\":[48473668,\"Kilobits\",\"GAUGE\"]}}],\"\
+      Interface - 02:00:16:33:16:30\":[\"IBM Interface\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_network_in_bytes\":[411548995053,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_bytes\":[200294990530,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_errors\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_errors\":[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_packets\"\
+      :[213598101,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_packets\"\
+      :[217822541,\"Number\",\"COUNTER64\"]}}],\"Volume - vda\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[15028510720,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[2606112489984,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[238818,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[124405961,\"Number\",\"COUNTER64\"]}}],\"Volume - vdb\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[245760,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[60,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"\
+      ]}}],\"Volume - vdc\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[122880,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[30,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[1,\"Number\",\"GAUGE\"]}}]},\"\
+      sevone-kafka\":{\"CPU\":[\"IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_average_cpu_usage_percentage\":[0.091667,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_cpus\":[4,\"Number\",\"GAUGE\"]}}],\"CPU Core - 0\":[\"\
+      IBM CPU\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[93547330000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 2\":[\"IBM CPU\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[89392190000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 3\":[\"IBM CPU\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[49195250000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"CPU Core - 1\":[\"IBM CPU\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_cpu_usage_nanoseconds\"\
+      :[44392140000000,\"Nanoseconds\",\"COUNTER32\"]}}],\"Memory\":[\"IBM Memory\"\
+      ,{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_memory_usage_percentage\"\
+      :[10.095433,\"Percent\",\"GAUGE\"],\"ibm_is_instance_memory_free_kib\":[14623992,\"\
+      Kilobits\",\"GAUGE\"],\"ibm_is_instance_memory_total_kib\":[16266128,\"Kilobits\"\
+      ,\"GAUGE\"],\"ibm_is_instance_memory_usable\":[14651428,\"Number\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_usable_percentage\":[90.073237,\"Percent\",\"GAUGE\"\
+      ],\"ibm_is_instance_memory_used_kib\":[1642136,\"Kilobits\",\"GAUGE\"]}}],\"\
+      Interface - 02:00:04:33:16:30\":[\"IBM Interface\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_network_in_bytes\":[240460213081,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_bytes\":[14731459191,\"Bytes\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_out_dropped_packets\":[0,\"Number\",\"\
+      COUNTER64\"],\"ibm_is_instance_network_in_errors\":[0,\"Number\",\"COUNTER64\"\
+      ],\"ibm_is_instance_network_out_errors\":[0,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_in_packets\"\
+      :[72431881,\"Number\",\"COUNTER64\"],\"ibm_is_instance_network_out_packets\"\
+      :[76037108,\"Number\",\"COUNTER64\"]}}],\"Volume - vda\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[1295229440,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[391200326144,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[58026,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\"\
+      :[20736020,\"Number\",\"COUNTER64\"]}}],\"Volume - vdb\":[\"IBM Volume\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_volume_read_bytes\"\
+      :[32522240,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\":[0,\"\
+      Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[1172,\"Number\"\
+      ,\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\",\"COUNTER64\"\
+      ]}}],\"Volume - vdc\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_volume_read_bytes\":[835584,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_write_bytes\"\
+      :[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\":[212,\"\
+      Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"Number\"\
+      ,\"COUNTER64\"]}}],\"Volume - vdd\":[\"IBM Volume\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_volume_read_bytes\":[294912,\"Bytes\",\"COUNTER64\"\
+      ],\"ibm_is_instance_volume_write_bytes\":[0,\"Bytes\",\"COUNTER64\"],\"ibm_is_instance_volume_read_requests\"\
+      :[72,\"Number\",\"COUNTER64\"],\"ibm_is_instance_volume_write_requests\":[0,\"\
+      Number\",\"COUNTER64\"]}}],\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[1,\"Number\",\"GAUGE\"]}}]},\"\
+      centerpoint-di\":{\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[-1,\"Number\",\"GAUGE\"]}}]},\"\
+      centerpoint-nms\":{\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[-1,\"Number\",\"GAUGE\"]}}]},\"\
+      plotkin-di-staging-test\":{\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\"\
+      :1689928308,\"ibm_is_instance_running_state\":[-1,\"Number\",\"GAUGE\"]}}]},\"\
+      plotkin-jump\":{\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_is_instance_running_state\":[-1,\"Number\",\"GAUGE\"]}}]},\"sevone-di-mkt\"\
+      :{\"Status\":[\"IBM Status\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_running_state\"\
+      :[-1,\"Number\",\"GAUGE\"]}}]},\"sevone-viptela-collector\":{\"Status\":[\"\
+      IBM Status\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_is_instance_running_state\"\
+      :[-1,\"Number\",\"GAUGE\"]}}]},\"Load Balancer - 169.54.196.174:80\":{\"Load\
+      \ Balancer\":[\"IBM Load Balancer\",{\"timestamp1\":{\"timestamp\":1689928308,\"\
+      ibm_cloud_load_balancer_active_connections\":[0,\"Number\",\"GAUGE\"],\"ibm_cloud_load_balancer_connection_rate\"\
+      :[0,\"Number\",\"GAUGE\"],\"ibm_cloud_load_balancer_throughput\":[0,\"Number\"\
+      ,\"GAUGE\"]}}]},\"Load Balancer - 169.54.196.174:8443\":{\"Load Balancer\":[\"\
+      IBM Load Balancer\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_cloud_load_balancer_active_connections\"\
+      :[0,\"Number\",\"GAUGE\"],\"ibm_cloud_load_balancer_connection_rate\":[0,\"\
+      Number\",\"GAUGE\"],\"ibm_cloud_load_balancer_throughput\":[0,\"Number\",\"\
+      GAUGE\"]}}]},\"Load Balancer - 169.55.233.152:80\":{\"Load Balancer\":[\"IBM\
+      \ Load Balancer\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_cloud_load_balancer_active_connections\"\
+      :[0,\"Number\",\"GAUGE\"],\"ibm_cloud_load_balancer_connection_rate\":[0,\"\
+      Number\",\"GAUGE\"],\"ibm_cloud_load_balancer_throughput\":[7,\"Number\",\"\
+      GAUGE\"]}}]},\"Load Balancer - 169.55.233.152:8443\":{\"Load Balancer\":[\"\
+      IBM Load Balancer\",{\"timestamp1\":{\"timestamp\":1689928308,\"ibm_cloud_load_balancer_active_connections\"\
+      :[0,\"Number\",\"GAUGE\"],\"ibm_cloud_load_balancer_connection_rate\":[0,\"\
+      Number\",\"GAUGE\"],\"ibm_cloud_load_balancer_throughput\":[0,\"Number\",\"\
+      GAUGE\"]}}]},\"coc-rtp-vpn\":{\"VPN Connection\":[\"IBM VPN Connection\",{\"\
+      timestamp1\":{\"timestamp\":1689928308,\"ibm_is_vpn_connection_status\":[0,\"\
+      Number\",\"GAUGE\"],\"ibm_is_vpn_connection_bytes_in\":[0,\"Bytes\",\"GAUGE\"\
+      ],\"ibm_is_vpn_connection_bytes_out\":[0,\"Bytes\",\"GAUGE\"],\"ibm_is_vpn_connection_packets_in\"\
+      :[0,\"Number\",\"GAUGE\"],\"ibm_is_vpn_connection_packets_out\":[0,\"Number\"\
+      ,\"GAUGE\"]}}]},\"coc-rtp\":{\"VPN Gateway\":[\"IBM VPN Gateway\",{\"timestamp1\"\
+      :{\"timestamp\":1689928308,\"ibm_is_vpn_gateway_status\":[1,\"Number\",\"GAUGE\"\
+      ],\"ibm_is_vpn_gateway_bytes_in\":[0,\"Bytes\",\"GAUGE\"],\"ibm_is_vpn_gateway_bytes_out\"\
+      :[0,\"Bytes\",\"GAUGE\"],\"ibm_is_vpn_gateway_packets_in\":[0,\"Number\",\"\
+      GAUGE\"],\"ibm_is_vpn_gateway_packets_out\":[0,\"Number\",\"GAUGE\"]}}]}}"
+    meta:
+      notLogged: true
+  - name: objectsarray
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: array
+    value: "[]"
+    meta:
+      notLogged: true
+  - name: devicenames
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: array
+    value: "[]"
+    meta:
+      notLogged: true
+  - name: timestamps
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: array
+    value: "[]"
+    meta:
+      notLogged: true
+  - name: indicators
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: string
+    value: '""'
+    meta:
+      notLogged: true
+  - name: ctimestamps
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: array
+    value: "[]"
+    meta:
+      notLogged: true
+  - name: ti
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+    meta:
+      notLogged: true
+  - name: cobject
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: array
+    value: "[]"
+    meta:
+      notLogged: true
+  - name: cindicator
+    required: false
+    isInput: false
+    isOutput: true
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+    meta:
+      notLogged: true
+  - name: NMSCredentials
+    required: false
+    isInput: true
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: string
+    value: '"admin/SevOne"'
+    meta:
+      authType: SevOne
+      subType: authentication
+  - name: ctimestamp
+    required: false
+    isInput: false
+    isOutput: false
+    level: INTERMEDIATE
+    type:
+      type: object
+    value: "{}"
+meta:
+  version: 5
+  layout: flow
+  workerGroup: default
+finally: null
